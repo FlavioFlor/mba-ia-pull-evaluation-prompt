@@ -79,12 +79,6 @@ from langchain_openai import ChatOpenAI  # LLM OpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI  # LLM Gemini
 ```
 
-Atenção se você encontrar material antigo sobre LangChain/LangSmith: o módulo
-`langchain.hub` (`from langchain import hub`) foi removido no LangChain 1.x, e o
-import `from langsmith.evaluation import evaluate` está depreciado. Hoje tanto o
-pull/push de prompts quanto a avaliação são feitos pelo `Client` do LangSmith:
-`client.pull_prompt()`, `client.push_prompt()` e `client.evaluate()`.
-
 ## OpenAI
 
 - Crie uma API Key da OpenAI: https://platform.openai.com/api-keys
@@ -139,10 +133,6 @@ Atenção: o LangSmith bloqueia por padrão o pull de prompts identificados por
 `owner/nome`, porque um prompt do Hub é um objeto LangChain serializado e pode vir
 de terceiros. Para o prompt semente do desafio, passe `dangerously_pull_public_prompt=True`
 no `client.pull_prompt(...)`.
-
-O repositório já traz uma cópia de `prompts/bug_to_user_story_v1.yml` para você ter
-referência do formato esperado. Seu script deve ser capaz de reproduzir esse arquivo
-a partir do pull.
 
 ### 2. Otimização do Prompt
 
@@ -323,9 +313,9 @@ A) Seção "Técnicas Aplicadas (Fase 2)":
 
 B) Seção "Resultados Finais":
 
-- Link do experimento no LangSmith com as avaliações
+- Link público do dataset de avaliação, com os experimentos (ver "Evidências no LangSmith")
 - Screenshots das avaliações com as notas mínimas de 0.8 atingidas
-- Tabela comparativa: prompts ruins (v1) vs prompts otimizados (v2)
+- Comparação entre o prompt original (v1) e o seu otimizado (v2): o que mudou e por quê
 
 C) Seção "Como Executar":
 
@@ -335,16 +325,23 @@ C) Seção "Como Executar":
 
 3. Evidências no LangSmith:
 
-- Screenshots do seu workspace no LangSmith, mostrando:
+- Link público do dataset de avaliação (ou screenshots do dashboard)
+- Devem estar visíveis:
   - Dataset de avaliação com 15 exemplos
-  - O experimento do prompt v2 com as 5 métricas ≥ 0.8 gravadas como feedback
+  - Execuções dos prompts v2 (otimizados) com notas ≥ 0.8
   - Tracing detalhado de pelo menos 3 exemplos
-- O link do experimento impresso pelo `src/evaluate.py`
 
-Observação: o link do experimento só abre para quem tem acesso ao seu workspace,
-então os screenshots são obrigatórios. Se quiser incluir também um link realmente
-público de um trace, use `client.share_run(run_id)` — ele gera uma URL pública
-para um run específico.
+O link que o `src/evaluate.py` imprime ao final só abre para quem tem acesso ao seu
+workspace. Para gerar um endereço que qualquer pessoa consiga abrir, compartilhe o
+dataset de avaliação — ele expõe junto os experimentos rodados contra ele:
+
+```python
+from langsmith import Client
+
+print(Client().share_dataset(dataset_name="<seu LANGSMITH_PROJECT>-eval")["url"])
+```
+
+Rode uma vez e guarde o endereço: ao compartilhar de novo, o link muda.
 
 ## Dicas Finais
 
