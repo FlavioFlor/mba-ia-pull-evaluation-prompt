@@ -56,11 +56,15 @@ Métricas Base:
   - Precision: 0.92 ✓
 
 ✅ STATUS: APROVADO - Todas as métricas >= 0.8
+
+Resultados no LangSmith (notas gravadas como feedback no experimento):
+  {seu_username}/bug_to_user_story_v2
+    https://smith.langchain.com/o/.../datasets/.../compare?selectedSessions=...
 ```
 
 ## Tecnologias obrigatórias
 
-- Linguagem: Python 3.9+
+- Linguagem: Python 3.10+
 - Framework: LangChain
 - Plataforma de avaliação: LangSmith
 - Gestão de prompts: LangSmith Prompt Hub
@@ -69,12 +73,17 @@ Métricas Base:
 ## Pacotes recomendados
 
 ```python
-from langchain import hub  # Pull e Push de prompts
-from langsmith import Client  # Interação com LangSmith API
-from langsmith.evaluation import evaluate  # Avaliação de prompts
+from langsmith import Client  # Pull/push de prompts, datasets e avaliação
+from langchain_core.prompts import ChatPromptTemplate  # Montagem dos prompts
 from langchain_openai import ChatOpenAI  # LLM OpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI  # LLM Gemini
 ```
+
+Atenção se você encontrar material antigo sobre LangChain/LangSmith: o módulo
+`langchain.hub` (`from langchain import hub`) foi removido no LangChain 1.x, e o
+import `from langsmith.evaluation import evaluate` está depreciado. Hoje tanto o
+pull/push de prompts quanto a avaliação são feitos pelo `Client` do LangSmith:
+`client.pull_prompt()`, `client.push_prompt()` e `client.evaluate()`.
 
 ## OpenAI
 
@@ -92,6 +101,25 @@ from langchain_google_genai import ChatGoogleGenerativeAI  # LLM Gemini
 
 Este desafio não fixa modelos. Nomes e versões mudam com frequência e alguns são descontinuados, então faz parte do desafio consultar a documentação oficial do provedor que você escolher, ver quais modelos estão disponíveis no momento e selecionar os que atendem ao objetivo. Você pode usar o mesmo modelo para responder e para avaliar, ou um modelo mais capaz na avaliação.
 
+## Handle do LangSmith Hub (seu username)
+
+O LangSmith identifica os prompts que você publica por um **handle público**, no
+formato `handle/nome_do_prompt`. Esse handle é o valor que vai em
+`USERNAME_LANGSMITH_HUB` no `.env`.
+
+Ele **não existe por padrão**: é criado no momento em que você torna um prompt
+público pela primeira vez. Por isso, faça esta etapa antes de tentar o push:
+
+1. Abra o LangSmith e vá em **Prompts**
+2. Crie um prompt qualquer (pode ser de teste) ou abra um que você já tenha
+3. Clique nos **três pontinhos** no canto superior direito, ao lado do botão **Playground**
+4. Escolha **Make Public**
+5. Na tela **Choose your public handle**, defina o seu handle
+
+O handle é **definitivo** depois de confirmado, então escolha com calma. Feito
+isso, ele aparece no endereço do prompt (`handle/nome_do_prompt`) e é esse valor
+que você coloca no `.env`.
+
 ## Requisitos
 
 ### 1. Pull do Prompt inicial do LangSmith
@@ -100,11 +128,21 @@ O repositório base já contém prompts de baixa qualidade publicados no LangSmi
 
 Tarefas:
 
+- Criar seu handle do LangSmith Hub (ver a seção "Handle do LangSmith Hub" acima)
 - Configurar suas credenciais do LangSmith no arquivo .env (conforme o arquivo .env.example)
 - Implementar o script src/pull_prompts.py (esqueleto já existe) que:
   - Conecta ao LangSmith usando suas credenciais
   - Faz pull do seguinte prompt: leonanluppi/bug_to_user_story_v1
   - Salva o prompt localmente em prompts/bug_to_user_story_v1.yml
+
+Atenção: o LangSmith bloqueia por padrão o pull de prompts identificados por
+`owner/nome`, porque um prompt do Hub é um objeto LangChain serializado e pode vir
+de terceiros. Para o prompt semente do desafio, passe `dangerously_pull_public_prompt=True`
+no `client.pull_prompt(...)`.
+
+O repositório já traz uma cópia de `prompts/bug_to_user_story_v1.yml` para você ter
+referência do formato esperado. Seu script deve ser capaz de reproduzir esse arquivo
+a partir do pull.
 
 ### 2. Otimização do Prompt
 
@@ -141,7 +179,10 @@ Tarefas:
   - Faz push para o LangSmith com nomes versionados: {seu_username}/bug_to_user_story_v2
   - Adiciona metadados (tags, descrição, técnicas utilizadas)
 - Executar o script e verificar no dashboard do LangSmith se os prompts foram publicados
-- Deixá-lo público
+- Deixá-lo público (`is_public=True` no push, ou pelo menu "Make Public" na interface)
+
+Lembre-se de que `{seu_username}` é o handle do Hub, e ele só existe depois de você
+ter tornado algum prompt público pelo menos uma vez.
 
 ### 4. Iteração
 
@@ -150,6 +191,11 @@ Espera-se 3-5 iterações.
 - Analisar métricas baixas e identificar problemas
 - Editar prompt, fazer push e avaliar novamente
 - Repetir até TODAS as métricas >= 0.8
+
+Cada execução do `src/evaluate.py` cria um **experimento** no LangSmith, ligado ao
+dataset de avaliação. As 5 notas são gravadas como feedback em cada exemplo, o que
+permite comparar suas iterações lado a lado no dashboard. Ao final, o script imprime
+o link direto do experimento.
 
 ```
 Critério de Aprovação:
@@ -219,7 +265,7 @@ O que você deve implementar:
 
 O que já vem pronto (não alterar):
 
-- src/evaluate.py — Script de avaliação completo
+- src/evaluate.py — Script de avaliação completo (cria o experimento no LangSmith e grava as notas como feedback)
 - src/metrics.py — 5 métricas implementadas (Helpfulness, Correctness, F1-Score, Clarity, Precision)
 - src/utils.py — Funções auxiliares
 - datasets/bug_to_user_story.jsonl — Dataset com 15 bugs (5 simples, 7 médios, 3 complexos)
@@ -277,7 +323,7 @@ A) Seção "Técnicas Aplicadas (Fase 2)":
 
 B) Seção "Resultados Finais":
 
-- Link público do seu dashboard do LangSmith mostrando as avaliações
+- Link do experimento no LangSmith com as avaliações
 - Screenshots das avaliações com as notas mínimas de 0.8 atingidas
 - Tabela comparativa: prompts ruins (v1) vs prompts otimizados (v2)
 
@@ -289,11 +335,16 @@ C) Seção "Como Executar":
 
 3. Evidências no LangSmith:
 
-- Link público (ou screenshots) do dashboard do LangSmith
-- Devem estar visíveis:
+- Screenshots do seu workspace no LangSmith, mostrando:
   - Dataset de avaliação com 15 exemplos
-  - Execuções dos prompts v2 (otimizados) com notas ≥ 0.8
+  - O experimento do prompt v2 com as 5 métricas ≥ 0.8 gravadas como feedback
   - Tracing detalhado de pelo menos 3 exemplos
+- O link do experimento impresso pelo `src/evaluate.py`
+
+Observação: o link do experimento só abre para quem tem acesso ao seu workspace,
+então os screenshots são obrigatórios. Se quiser incluir também um link realmente
+público de um trace, use `client.share_run(run_id)` — ele gera uma URL pública
+para um run específico.
 
 ## Dicas Finais
 
